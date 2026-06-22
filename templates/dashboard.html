@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Dashboard — ACE Portal</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #000000;
+      --surface: #0a0a0a;
+      --border: #333333;
+      --border-hover: #444444;
+      --text: #ededed;
+      --sub: #a1a1aa;
+      --accent: #ffffff;
+      --green: #10b981;
+      --red: #ef4444;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 40px 20px 80px; line-height: 1.5; }
+    .container { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column;}
+
+    /* Nav */
+    nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+    .logo { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.5px; }
+    .back-btn { color: var(--sub); text-decoration: none; font-size: 14px; border: 1px solid var(--border); padding: 6px 12px; border-radius: var(--radius); transition: all 0.2s; }
+    .back-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Hero */
+    .hero { border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; background: var(--surface); display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 20px; }
+    .student-info h1 { font-size: 24px; font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.5px; margin-bottom: 4px; }
+    .student-info p { color: var(--sub); font-size: 14px; display: flex; gap: 12px; flex-wrap: wrap;}
+    .student-info span { background: #1a1a1a; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); }
+    .hero-stats { display: flex; gap: 32px; }
+    .h-stat { text-align: right; }
+    .h-stat .val { font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 700; }
+    .h-stat .lbl { font-size: 12px; color: var(--sub); text-transform: uppercase; letter-spacing: 1px; }
+
+    /* Grid layout */
+    .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 40px; }
+    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+    .card { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius); padding: 24px; }
+    .card h3 { font-size: 14px; color: var(--sub); margin-bottom: 16px; font-weight: 500; }
+    
+    /* Search */
+    .search-wrap { margin-bottom: 24px; }
+    .search-input { width: 100%; background: var(--bg); border: 1px solid var(--border); padding: 12px 16px; border-radius: var(--radius); color: var(--text); font-size: 14px; transition: border 0.2s; -webkit-appearance: none; }
+    .search-input:focus { outline: none; border-color: var(--sub); }
+
+    /* Accordion */
+    .sem-group { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; overflow: hidden; }
+    .sem-header { background: var(--surface); padding: 16px 20px; display: flex; justify-content: space-between; cursor: pointer; transition: background 0.2s; font-family: 'Space Grotesk', sans-serif; }
+    .sem-header:hover { background: #111; }
+    .sem-title { font-weight: 600; font-size: 15px; }
+    .sem-sgpa { color: var(--sub); font-size: 14px; }
+    
+    /* Mobile Table Scroll Fix */
+    .sem-content { 
+      display: none; 
+      border-top: 1px solid var(--border); 
+      width: 100%; 
+      overflow-x: auto; 
+      -webkit-overflow-scrolling: touch; 
+    }
+    .sem-group.active .sem-content { display: block; }
+    
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; min-width: 450px; }
+    th { padding: 12px 20px; color: var(--sub); font-weight: 500; border-bottom: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;}
+    td { padding: 12px 20px; border-bottom: 1px solid #1a1a1a; white-space: nowrap; }
+    td:nth-child(2) { white-space: normal; min-width: 180px; } /* Allows subject names to wrap */
+    tr:last-child td { border-bottom: none; }
+    
+    .grade { font-weight: 600; padding: 2px 8px; border-radius: 4px; font-size: 12px; display: inline-block; text-align: center; min-width: 32px;}
+    .grade.good { background: rgba(16, 185, 129, 0.1); color: var(--green); }
+    .grade.bad { background: rgba(239, 68, 68, 0.1); color: var(--red); }
+    .grade.neutral { background: #1a1a1a; color: var(--text); }
+
+    /* FLOATING CREDIT BADGE */
+    .floating-credit {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 99px;
+      font-size: 12px;
+      color: var(--sub);
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: 0.5px;
+      z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .floating-credit span { background: linear-gradient(135deg, #ffffff, #a1a1aa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700; }
+
+    @media (max-width: 480px) {
+      body { padding: 20px 16px 80px; }
+      .hero-stats { gap: 20px; }
+      .h-stat .val { font-size: 24px; }
+      /* Center badge on mobile */
+      .floating-credit { bottom: 16px; right: 50%; transform: translateX(50%); white-space: nowrap;}
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <nav>
+    <div class="logo">ACE Portal</div>
+    <a href="/" class="back-btn">Log out</a>
+  </nav>
+
+  <script id="serverData" type="application/json">
+    {{ data_json | safe }}
+  </script>
+
+  <div id="app"></div>
+</div>
+
+<div class="floating-credit">Made by <span>Rvind</span></div>
+
+<script>
+  const data = JSON.parse(document.getElementById('serverData').textContent);
+  
+  const labels = data.semesters.map(s => s.name.replace('B.TECH', '').replace('SEM', '').trim());
+  const sgpas = data.semesters.map(s => parseFloat(s.sgpa) || 0);
+
+  function getGradeClass(grade) {
+    if (['O', 'A+', 'A', 'B+'].includes(grade)) return 'good';
+    if (['F', 'Ab'].includes(grade)) return 'bad';
+    return 'neutral';
+  }
+
+  const appDiv = document.getElementById('app');
+  appDiv.innerHTML = `
+    <div class="hero">
+      <div class="student-info">
+        <h1>${data.student.name !== 'N/A' ? data.student.name : 'Student Details'}</h1>
+        <p>
+          <span>${data.student.hallticket}</span>
+          <span>${data.student.branch}</span>
+        </p>
+      </div>
+      <div class="hero-stats">
+        <div class="h-stat">
+          <div class="val">${data.cgpa}</div>
+          <div class="lbl">CGPA</div>
+        </div>
+        <div class="h-stat">
+          <div class="val" style="color: var(--green)">${data.credits.split('/')[0]}</div>
+          <div class="lbl">Credits</div>
+        </div>
+        <div class="h-stat">
+          <div class="val" style="color: ${data.backlogs.startsWith('0') ? 'var(--green)' : 'var(--red)'}">${data.backlogs.split('/')[0]}</div>
+          <div class="lbl">Backlogs</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>SGPA Progression</h3>
+        <canvas id="sgpaChart" height="100"></canvas>
+      </div>
+      <div class="card">
+        <h3>Quick Insights</h3>
+        <div style="margin-bottom: 12px; display: flex; justify-content: space-between;">
+          <span style="color: var(--sub); font-size: 14px;">Highest SGPA</span>
+          <strong>${Math.max(...sgpas.filter(n => n > 0))}</strong>
+        </div>
+        <div style="margin-bottom: 12px; display: flex; justify-content: space-between;">
+          <span style="color: var(--sub); font-size: 14px;">Total Semesters</span>
+          <strong>${data.semesters.length}</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <input type="text" id="subjectSearch" class="search-input" placeholder="Search for a subject (e.g., Machine Learning)..." />
+    </div>
+
+    <div id="semestersContainer">
+      ${data.semesters.map((sem, i) => `
+        <div class="sem-group" data-sem-index="${i}">
+          <div class="sem-header" onclick="this.parentElement.classList.toggle('active')">
+            <span class="sem-title">${sem.name}</span>
+            <span class="sem-sgpa">SGPA: ${sem.sgpa}</span>
+          </div>
+          <div class="sem-content">
+            <table>
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Subject</th>
+                  <th>Credits</th>
+                  <th>Grade</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${sem.subjects.map(sub => `
+                  <tr class="subject-row" data-name="${sub.name.toLowerCase()}">
+                    <td style="color: var(--sub); font-size: 13px;">${sub.code}</td>
+                    <td>${sub.name}</td>
+                    <td>${sub.credits}</td>
+                    <td><span class="grade ${getGradeClass(sub.grade)}">${sub.grade}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  const ctx = document.getElementById('sgpaChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'SGPA',
+        data: sgpas,
+        borderColor: '#ffffff',
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true,
+        pointBackgroundColor: '#000',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { grid: { color: '#333', borderDash: [5, 5] }, min: 4, max: 10, ticks: { color: '#a1a1aa' } },
+        x: { grid: { display: false }, ticks: { color: '#a1a1aa' } }
+      }
+    }
+  });
+
+  document.getElementById('subjectSearch').addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    const groups = document.querySelectorAll('.sem-group');
+
+    groups.forEach(group => {
+      let hasMatch = false;
+      const rows = group.querySelectorAll('.subject-row');
+      
+      rows.forEach(row => {
+        if (row.dataset.name.includes(term)) {
+          row.style.display = '';
+          hasMatch = true;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      if (term.length > 1 && hasMatch) {
+        group.classList.add('active');
+        group.style.display = '';
+      } else if (term.length > 1 && !hasMatch) {
+        group.style.display = 'none';
+      } else {
+        group.classList.remove('active');
+        group.style.display = '';
+      }
+    });
+  });
+</script>
+</body>
+</html>

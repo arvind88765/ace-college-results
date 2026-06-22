@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark Surface Background matching #0a0a0a -->
+  <rect width="512" height="512" rx="112" fill="#0A0A0A"/>
+  <!-- Subtle Border matching #333333 -->
+  <rect x="2" y="2" width="508" height="508" rx="110" stroke="#333333" stroke-width="4"/>
+  
+  <!-- Modern Geometric 'A' / Upward Trend -->
+  <path d="M256 140 L140 360 H205 L256 245 L307 360 H372 L256 140Z" fill="url(#grad1)"/>
+  
+  <defs>
+    <!-- Silver/White Gradient matching your "Made by Rvind" text -->
+    <linearGradient id="grad1" x1="256" y1="140" x2="256" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#A1A1AA"/>
+    </linearGradient>
+  </defs>
+</svg>

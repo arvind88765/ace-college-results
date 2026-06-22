@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ACE Results Portal</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #000000;
+      --surface: #0a0a0a;
+      --border: #333333;
+      --text: #ededed;
+      --sub: #a1a1aa;
+      --accent: #ffffff;
+      --green: #10b981;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; position: relative; padding-bottom: 80px;}
+    
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px; width: 100%; max-width: 400px; z-index: 1; position: relative;}
+    .logo { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.5px; }
+    .subtitle { color: var(--sub); font-size: 14px; margin-bottom: 24px; line-height: 1.5;}
+    
+    .features-list { margin-bottom: 32px; display: flex; flex-direction: column; gap: 10px; padding-top: 20px; border-top: 1px solid var(--border); }
+    .feature { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--sub); }
+    .feature svg { width: 16px; height: 16px; color: var(--text); opacity: 0.8; flex-shrink: 0; }
+
+    label { display: block; font-size: 13px; color: var(--sub); margin-bottom: 8px; }
+    input { width: 100%; background: var(--bg); border: 1px solid var(--border); padding: 14px; border-radius: var(--radius); color: var(--text); font-size: 15px; margin-bottom: 24px; transition: border 0.2s; -webkit-appearance: none;}
+    input:focus { outline: none; border-color: var(--sub); }
+    
+    .btn { width: 100%; padding: 14px; background: var(--accent); color: #000; border: none; border-radius: var(--radius); font-weight: 600; font-size: 15px; cursor: pointer; transition: opacity 0.2s; }
+    .btn:hover { opacity: 0.9; }
+
+    .flash { background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 12px; border-radius: var(--radius); font-size: 13px; margin-bottom: 24px; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+    /* FLOATING CREDIT BADGE */
+    .floating-credit {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 99px;
+      font-size: 12px;
+      color: var(--sub);
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: 0.5px;
+      z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .floating-credit span { background: linear-gradient(135deg, #ffffff, #a1a1aa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700; }
+
+    /* LOADING OVERLAY */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      display: none; align-items: center; justify-content: center; z-index: 999; padding: 20px;
+      opacity: 0; transition: opacity 0.3s ease;
+    }
+    .overlay.active { display: flex; opacity: 1; }
+    
+    .loader-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 32px; width: 100%; max-width: 360px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+    }
+    
+    .timer-display { font-family: 'Space Grotesk', sans-serif; font-size: 48px; font-weight: 700; text-align: center; color: var(--text); line-height: 1; margin-bottom: 4px;}
+    .timer-sub { text-align: center; color: var(--sub); font-size: 13px; margin-bottom: 32px; text-transform: uppercase; letter-spacing: 1px;}
+    
+    .step { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; color: #444; font-size: 14px; font-weight: 500; transition: all 0.3s ease; }
+    .step:last-child { margin-bottom: 0; }
+    .step.active { color: var(--text); }
+    .step.active .icon { border-color: var(--border); border-top-color: var(--accent); animation: spin 1s linear infinite; }
+    .step.done { color: var(--green); }
+    .step.done .icon { border-color: var(--green); background: rgba(16, 185, 129, 0.1); }
+    .step.done .icon::after { content: '✓'; color: var(--green); }
+    .icon { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-size: 11px; transition: all 0.3s ease;}
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 480px) {
+      .card { padding: 32px 24px; border: none; background: transparent; }
+      body { justify-content: flex-start; padding-top: 5vh; }
+      .loader-card { padding: 24px; }
+      .timer-display { font-size: 40px; }
+      .step { font-size: 13px; }
+      /* Center badge on mobile */
+      .floating-credit { bottom: 16px; right: 50%; transform: translateX(50%); white-space: nowrap;}
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">ACE Portal</div>
+  <p class="subtitle">A modern, fast, and unified dashboard for your ACE Engineering College results.</p>
+
+  <div class="features-list">
+    <div class="feature">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+      Instant full transcript fetching
+    </div>
+    <div class="feature">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+      Beautiful SGPA & Credits tracking
+    </div>
+    <div class="feature">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+      Zero data stored on our servers
+    </div>
+  </div>
+
+  {% if error %}
+  <div class="flash">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" id="loginForm">
+    <label for="hallticket">Roll Number</label>
+    <input type="text" id="hallticket" name="hallticket" placeholder="e.g. 21AG1A66A5" required autocomplete="off" autocorrect="off" autocapitalize="off" />
+
+    <input type="hidden" name="password" value="" />
+
+    <button type="submit" class="btn" id="submitBtn">View Results</button>
+  </form>
+</div>
+
+<div class="floating-credit">Made by <span>Rvind</span></div>
+
+<div class="overlay" id="loaderOverlay">
+  <div class="loader-card">
+    <div class="timer-display"><span id="timeLeft">30</span>s</div>
+    <div class="timer-sub">Maximum Wait Time</div>
+    
+    <div class="steps-container">
+      <div class="step" id="step1"><div class="icon"></div><div>Connecting to ACE ERP...</div></div>
+      <div class="step" id="step2"><div class="icon"></div><div>Bypassing authentication...</div></div>
+      <div class="step" id="step3"><div class="icon"></div><div>Locating overall marks...</div></div>
+      <div class="step" id="step4"><div class="icon"></div><div>Downloading transcript...</div></div>
+      <div class="step" id="step5"><div class="icon"></div><div>Structuring dashboard...</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('loginForm').addEventListener('submit', function(e) {
+    const overlay = document.getElementById('loaderOverlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => { overlay.classList.add('active'); }, 10);
+    
+    document.querySelector('.card').style.filter = 'blur(4px)';
+
+    let maxTime = 30;
+    const timeDisplay = document.getElementById('timeLeft');
+    const timerInterval = setInterval(() => {
+      maxTime--;
+      timeDisplay.textContent = maxTime;
+      if (maxTime <= 0) {
+        clearInterval(timerInterval);
+        timeDisplay.textContent = "0";
+      }
+    }, 1000);
+
+    const steps = [
+      { id: 'step1', delay: 0 },      
+      { id: 'step2', delay: 1500 },   
+      { id: 'step3', delay: 4000 },   
+      { id: 'step4', delay: 6500 },   
+      { id: 'step5', delay: 9000 }    
+    ];
+
+    steps.forEach((step, index) => {
+      setTimeout(() => {
+        if (index > 0) {
+          const prevStep = document.getElementById(steps[index - 1].id);
+          prevStep.classList.remove('active');
+          prevStep.classList.add('done');
+        }
+        const currentStep = document.getElementById(step.id);
+        currentStep.classList.add('active');
+      }, step.delay);
+    });
+  });
+</script>
+
+</body>
+</html>
