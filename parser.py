@@ -2,7 +2,13 @@ import re
 from bs4 import BeautifulSoup
 
 def parse_results(html):
-    soup = BeautifulSoup(html, 'html.parser')
+    # lxml is roughly 5-10x faster than the stdlib html.parser for
+    # table-heavy pages like this results transcript. Falls back to
+    # html.parser only if lxml isn't installed.
+    try:
+        soup = BeautifulSoup(html, 'lxml')
+    except Exception:
+        soup = BeautifulSoup(html, 'html.parser')
     full_text = soup.get_text(' ', strip=True)
 
     data = {
