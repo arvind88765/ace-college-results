@@ -31,7 +31,7 @@ carefully before relying on it.
 import re
 import asyncio
 import httpx
-from parser import parse_results
+from parser import parse_results, parse_overall_result
 
 BASE = "https://aceexam.in"
 LOGIN_URL = f"{BASE}/Login.aspx"
@@ -120,14 +120,30 @@ async def _login(client: httpx.AsyncClient, hallticket: str, password: str) -> s
     })
     hidden = _hidden_fields(r.text)
 
-    # STEP 5 - trigger the Overall Marks link from MainStud (302 redirect)
+    # STEP 5 - trigger the "Overall Result" link from MainStud (302 redirect).
+    # This lands on OverallResultStudent.aspx, which has the full
+    # SGPA/CGPA-per-semester table in ONE page - confirmed against real
+    # page source the user provided. (There's a separate lnkOverallMa
+    # target for subject-level detail, which needs per-semester button
+    # clicks - not wired up yet, see fetch_subject_details TODO below.)
     r = await client.post(MAIN_URL, data={
-        "__EVENTTARGET": "ctl00$cpHeader$ucStud$lnkOverallMa",
+        "__EVENTTARGET": "ctl00$cpHeader$ucStud$lnkOverallRe",
         "__EVENTARGUMENT": "",
         **hidden,
     }, follow_redirects=True)
 
     return r.text
+
+
+async def fetch_overall_result(hallticket: str, password: str) -> dict:
+    """The main, VERIFIED-working fetch: logs in, lands on
+    OverallResultStudent.aspx (one page, no per-semester button
+    clicking needed), and parses the SGPA/CGPA-per-semester table.
+    This does NOT include subject-level grades - see the TODO on
+    fetch_subject_details below for that."""
+    async with _make_client() as client:
+        html = await _login(client, hallticket, password)
+    return await asyncio.to_thread(parse_overall_result, html)
 
 
 async def list_semesters(hallticket: str, password: str):
