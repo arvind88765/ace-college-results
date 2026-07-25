@@ -1,6 +1,66 @@
 import re
 from bs4 import BeautifulSoup
 
+
+def parse_overall_result(html):
+    """Parses OverallResultStudent.aspx - the SGPA/CGPA-per-semester
+    summary table. Written directly against real page source the user
+    provided (table id="ctl00_cpStud_grdOverall"), not guessed.
+
+    Note: the table's SNo column is NOT chronological (e.g. row order
+    seen was SNo 1,4,2,3,5,6,8,7) - but the row DISPLAY order already
+    is chronological (I BTECH I SEM, I BTECH II SEM, II BTECH I SEM...),
+    so we preserve display order and ignore SNo for ordering.
+    """
+    try:
+        soup = BeautifulSoup(html, 'lxml')
+    except Exception:
+        soup = BeautifulSoup(html, 'html.parser')
+
+    data = {
+        "student": {"name": "N/A", "hallticket": "N/A", "branch": "N/A"},
+        "cgpa": "N/A",
+        "credits": "N/A",
+        "backlogs": "N/A",
+        "semesters": [],
+    }
+
+    full_text = soup.get_text(' ', strip=True)
+    name_match = re.search(r'WELCOME\s+([A-Z\s]+)\s*\(\s*([0-9A-Z]+)\s*\)', full_text, re.I)
+    if name_match:
+        data['student']['name'] = name_match.group(1).strip()
+        data['student']['hallticket'] = name_match.group(2).strip()
+    branch_match = re.search(r'(CSE|CSM|AIML|AIDS|IT|ECE|EEE|MECH|CIVIL)(?:\s*\([A-Z&]+\))?', full_text, re.I)
+    if branch_match:
+        data['student']['branch'] = branch_match.group(0).upper().replace('&', '')
+
+    table = soup.find(id="ctl00_cpStud_grdOverall")
+    if not table:
+        # Table id can vary slightly by ASP.NET naming container; fall
+        # back to searching for any table whose header row mentions CGPA.
+        for t in soup.find_all('table'):
+            header_text = t.find('tr')
+            if header_text and 'CGPA' in header_text.get_text().upper():
+                table = t
+                break
+
+    if table:
+        rows = table.find_all('tr')[1:]  # skip header row
+        for row in rows:
+            cells = [c.get_text(strip=True) for c in row.find_all('td')]
+            if len(cells) < 4:
+                continue
+            _sno, sem_name, sgpa, cgpa = cells[0], cells[1], cells[2], cells[3]
+            data['semesters'].append({
+                "name": sem_name,
+                "sgpa": sgpa,
+                "subjects": [],  # subject-level detail not fetched here
+            })
+            data['cgpa'] = cgpa  # last row = most recent overall CGPA
+
+    return data
+
+
 def parse_results(html):
     # lxml is roughly 5-10x faster than the stdlib html.parser for
     # table-heavy pages like this results transcript. Falls back to
