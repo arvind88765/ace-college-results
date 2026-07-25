@@ -41,6 +41,20 @@ SEMWISE_URL = f"{BASE}/StudentLogin/Student/OverallMarksSemwiseMarks.aspx"
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
+
+def _make_client(max_keepalive=5, max_connections=10) -> httpx.AsyncClient:
+    """Builds the async client defensively: tries HTTP/2 first, but
+    falls back to HTTP/1.1 if the 'h2' package isn't actually
+    available in this environment (e.g. a serverless build that
+    didn't resolve the httpx[http2] extra correctly) instead of
+    crashing every request with an ImportError."""
+    limits = httpx.Limits(max_keepalive_connections=max_keepalive, max_connections=max_connections)
+    timeout = httpx.Timeout(15.0, connect=5.0)
+    try:
+        return httpx.AsyncClient(headers=HEADERS, http2=True, limits=limits, timeout=timeout)
+    except ImportError:
+        return httpx.AsyncClient(headers=HEADERS, http2=False, limits=limits, timeout=timeout)
+
 _VIEWSTATE_RE = re.compile(r'id="__VIEWSTATE"[^>]*value="([^"]*)"')
 _EVENTVAL_RE = re.compile(r'id="__EVENTVALIDATION"[^>]*value="([^"]*)"')
 _VIEWSTATEGEN_RE = re.compile(r'id="__VIEWSTATEGENERATOR"[^>]*value="([^"]*)"')
@@ -121,11 +135,7 @@ async def list_semesters(hallticket: str, password: str):
     buttons without fetching any semester's detail yet - useful for
     deciding which semesters are actually needed before paying the
     ~2s-per-semester cost."""
-    limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
-    async with httpx.AsyncClient(
-        headers=HEADERS, http2=True, limits=limits,
-        timeout=httpx.Timeout(15.0, connect=5.0),
-    ) as client:
+    async with _make_client() as client:
         html = await _login(client, hallticket, password)
         return _find_semester_buttons(html)
 
@@ -136,11 +146,7 @@ async def fetch_all_semesters_single_session(hallticket: str, password: str) -> 
     these requests (confirmed against the HAR) and can't be skipped
     within a single session. Expect ~2s PER semester on top of ~6s of
     login/navigation overhead."""
-    limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
-    async with httpx.AsyncClient(
-        headers=HEADERS, http2=True, limits=limits,
-        timeout=httpx.Timeout(15.0, connect=5.0),
-    ) as client:
+    async with _make_client() as client:
         html = await _login(client, hallticket, password)
         hidden = _hidden_fields(html)
         buttons = _find_semester_buttons(html)
@@ -174,11 +180,7 @@ async def fetch_all_semesters_parallel_sessions(hallticket: str, password: str) 
         return await fetch_all_semesters_single_session(hallticket, password)
 
     async def fetch_one(field_name: str, label: str) -> str:
-        limits = httpx.Limits(max_keepalive_connections=2, max_connections=4)
-        async with httpx.AsyncClient(
-            headers=HEADERS, http2=True, limits=limits,
-            timeout=httpx.Timeout(15.0, connect=5.0),
-        ) as client:
+        async with _make_client(max_keepalive=2, max_connections=4) as client:
             html = await _login(client, hallticket, password)
             hidden = _hidden_fields(html)
             r = await client.post(SEMWISE_URL, data={
