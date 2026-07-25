@@ -1,7 +1,7 @@
 import json
 import asyncio
 from flask import Flask, render_template, request, Response
-from ace_client import fetch_all_semesters_single_session, list_semesters, _login, _make_client
+from ace_client import fetch_overall_result, _login, _make_client
 
 app = Flask(__name__)
 
@@ -30,7 +30,7 @@ def home():
         password = user_password if user_password else hallticket
 
         try:
-            data = asyncio.run(fetch_all_semesters_single_session(hallticket, password))
+            data = asyncio.run(fetch_overall_result(hallticket, password))
             return render_template("dashboard.html", data_json=json.dumps(data))
 
         except Exception as e:
