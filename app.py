@@ -1,6 +1,7 @@
 import json
+import asyncio
 from flask import Flask, render_template, request
-from ace_client import fetch_all_semesters_single_session as login_and_fetch_async
+from ace_client import fetch_all_semesters_single_session
 
 app = Flask(__name__)
 
@@ -10,12 +11,14 @@ def transform_hallticket(raw: str) -> str:
         ht = ht + "P"
     return ht
 
-# Flask 3.x supports async view functions directly (via asgiref) —
-# no gevent/eventlet needed. The ~1-3s login scrape no longer ties
-# up a whole sync worker; the process can keep handling other
-# requests while awaiting network I/O here.
+# Plain sync view — deliberately NOT `async def`. Async Flask views need
+# the 'asgiref' package (via the Flask[async] extra), which failed to
+# install correctly in the Vercel build (confirmed via the runtime
+# traceback: "RuntimeError: Install Flask with the 'async' extra").
+# asyncio.run() here gets the same httpx-async client working without
+# depending on Flask's async-view machinery at all.
 @app.route("/", methods=["GET", "POST"])
-async def home():
+def home():
     if request.method == "POST":
         raw_hallticket = request.form.get("hallticket", "").strip()
         user_password  = request.form.get("password", "").strip()
@@ -27,7 +30,7 @@ async def home():
         password = user_password if user_password else hallticket
 
         try:
-            data = await login_and_fetch_async(hallticket, password)
+            data = asyncio.run(fetch_all_semesters_single_session(hallticket, password))
             return render_template("dashboard.html", data_json=json.dumps(data))
 
         except Exception as e:
