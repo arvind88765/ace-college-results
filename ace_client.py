@@ -123,11 +123,16 @@ async def _login(client: httpx.AsyncClient, hallticket: str, password: str) -> s
     # STEP 5 - trigger the "Overall Result" link from MainStud (302 redirect).
     # This lands on OverallResultStudent.aspx, which has the full
     # SGPA/CGPA-per-semester table in ONE page - confirmed against real
-    # page source the user provided. (There's a separate lnkOverallMa
-    # target for subject-level detail, which needs per-semester button
-    # clicks - not wired up yet, see fetch_subject_details TODO below.)
+    # page source the user provided. (There's a separate
+    # lnkOverallMarksSemwiseMarks target for subject-level detail, which
+    # needs per-semester button clicks - not wired up yet.)
+    # NOTE: earlier versions of this file used a truncated control ID
+    # ("lnkOverallMa"/"lnkOverallRe") because my own HAR-extraction
+    # script sliced values to 40 chars for display and I mistakenly fed
+    # that truncated value back into the code. Re-extracted without
+    # truncation - the real ID is lnkOverallResult.
     r = await client.post(MAIN_URL, data={
-        "__EVENTTARGET": "ctl00$cpHeader$ucStud$lnkOverallRe",
+        "__EVENTTARGET": "ctl00$cpHeader$ucStud$lnkOverallResult",
         "__EVENTARGUMENT": "",
         **hidden,
     }, follow_redirects=True)
