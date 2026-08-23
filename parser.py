@@ -1,8 +1,20 @@
 import re
 from bs4 import BeautifulSoup
 
+# Pre-compile all regex patterns (compile once, use many times)
+SEM_RE = re.compile(r'([IVX]+\s+B\.?\s*(?:TECH|E|SC)[^\n]{0,30}SEM)', re.I)
+CGPA_RE = re.compile(r'lblMarks$')
+CRED_RE = re.compile(r'lblCredits$')
+DUE_RE = re.compile(r'lblDue$')
+NAME_HT_RE = re.compile(r'WELCOME\s+([A-Z\s]+)\s+\(\s*([0-9A-Z]+)\s*\)', re.I)
+BRANCH_RE = re.compile(r'(CSE|CSM|AIML|AIDS|IT|ECE|EEE|MECH|CIVIL)(?:\s*\([A-Z&]+\))?', re.I)
+SGPA_RE = re.compile(r'SGPA:\s*([0-9.]+)')
+
+VALID_GRADES = {'O', 'A+', 'A', 'B+', 'B', 'C', 'D', 'P', 'F', 'AB'}
+
 def parse_results(html):
-    soup = BeautifulSoup(html, 'html.parser')
+    # Use lxml parser (3-5x faster than html.parser)
+    soup = BeautifulSoup(html, 'lxml')
     full_text = soup.get_text(' ', strip=True)
 
     data = {
@@ -18,33 +30,31 @@ def parse_results(html):
     }
 
     # --- 1. Top-Level Stats ---
-    cgpa_elem = soup.find(id=re.compile(r'lblMarks$'))
+    cgpa_elem = soup.find(id=CGPA_RE)
     if cgpa_elem: 
         data['cgpa'] = cgpa_elem.get_text(strip=True)
     if not data['cgpa']: 
         data['cgpa'] = 'N/A' # Juniors might have a blank CGPA span
 
-    cred_elem = soup.find(id=re.compile(r'lblCredits$'))
+    cred_elem = soup.find(id=CRED_RE)
     if cred_elem: 
         data['credits'] = cred_elem.get_text(strip=True).replace(' ', '')
 
-    due_elem = soup.find(id=re.compile(r'lblDue$'))
+    due_elem = soup.find(id=DUE_RE)
     if due_elem: 
         data['backlogs'] = due_elem.get_text(strip=True).replace(' ', '')
 
     # --- 2. Student Info ---
-    name_match = re.search(r'WELCOME\s+([A-Z\s]+)\s+\(\s*([0-9A-Z]+)\s*\)', full_text, re.I)
+    name_match = NAME_HT_RE.search(full_text)
     if name_match:
         data['student']['name'] = name_match.group(1).strip()
         data['student']['hallticket'] = name_match.group(2).strip()
 
-    branch_match = re.search(r'(CSE|CSM|AIML|AIDS|IT|ECE|EEE|MECH|CIVIL)(?:\s*\([A-Z&]+\))?', full_text, re.I)
+    branch_match = BRANCH_RE.search(full_text)
     if branch_match: 
         data['student']['branch'] = branch_match.group(0).upper().replace('&', '')
 
     # --- 3. Indestructible Table Parsing ---
-    SEM_RE = re.compile(r'([IVX]+\s+B\.?\s*(?:TECH|E|SC)[^\n]{0,30}SEM)', re.I)
-    valid_grades = {'O', 'A+', 'A', 'B+', 'B', 'C', 'D', 'P', 'F', 'AB'}
 
     unique_sems = {} # Used to overwrite duplicate ghost tables
     current_sem = None
@@ -73,7 +83,7 @@ def parse_results(html):
                 
             # Detect SGPA
             if current_sem and 'SGPA:' in row_text:
-                sgpa_m = re.search(r'SGPA:\s*([0-9.]+)', row_text)
+                sgpa_m = SGPA_RE.search(row_text)
                 if sgpa_m: 
                     current_sem['sgpa'] = sgpa_m.group(1)
                 continue
@@ -102,7 +112,7 @@ def parse_results(html):
                         credits = cols[status_idx - 1]
                         
                         # Extract the grades array sitting between the subject name and credits
-                        grades_list = [x for x in cols[3:status_idx] if x.upper() in valid_grades]
+                        grades_list = [x for x in cols[3:status_idx] if x.upper() in VALID_GRADES]
                         if grades_list:
                             # Capture the most recent attempt
                             raw_grade = grades_list[-1]
