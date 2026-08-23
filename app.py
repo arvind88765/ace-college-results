@@ -35,4 +35,5 @@ def home():
     return render_template("index.html", error=None)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Run in production mode (no debug overhead)
+    app.run(debug=False, threaded=True)
