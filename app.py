@@ -33,7 +33,7 @@ def home():
 
 @app.route("/api/results", methods=["POST"])
 def api_results():
-    """Fast JSON API endpoint for fetching results - ideal for mobile & headless clients"""
+    """Fast JSON API - POST hallticket + password, get results instantly"""
     try:
         raw_hallticket = request.json.get("hallticket", "").strip()
         user_password = request.json.get("password", "").strip()
@@ -56,6 +56,30 @@ def api_results():
             "success": False,
             "error": str(e)
         }), 400
+
+@app.route("/results/<hallticket>", methods=["GET", "POST"])
+def quick_results(hallticket):
+    """FASTEST: Direct results - hallticket in URL, password optional (defaults to hallticket)"""
+    try:
+        password = request.args.get("password") or request.json.get("password") if request.is_json else None
+        
+        ht = transform_hallticket(hallticket)
+        pwd = password if password else ht
+        
+        data = login_and_fetch(ht, pwd)
+        
+        # Return as JSON by default
+        return jsonify({
+            "success": True,
+            "student": data.get("student"),
+            "cgpa": data.get("cgpa"),
+            "credits": data.get("credits"),
+            "backlogs": data.get("backlogs"),
+            "semesters": data.get("semesters")
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 if __name__ == "__main__":
     app.run(debug=False, threaded=True)
