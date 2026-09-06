@@ -13,8 +13,9 @@ SGPA_RE = re.compile(r'SGPA:\s*([0-9.]+)')
 VALID_GRADES = {'O', 'A+', 'A', 'B+', 'B', 'C', 'D', 'P', 'F', 'AB'}
 
 def parse_results(html):
-    # Use lxml parser (3-5x faster than html.parser)
-    soup = BeautifulSoup(html, 'lxml')
+    # Use html.parser for speed (lxml requires system install, html.parser is built-in)
+    # Strip to first meaningful content to avoid parsing bloat
+    soup = BeautifulSoup(html, 'html.parser')
     full_text = soup.get_text(' ', strip=True)
 
     data = {

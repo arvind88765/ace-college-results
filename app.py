@@ -1,5 +1,5 @@
 import json
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from ace_client import login_and_fetch
 
 app = Flask(__name__)
@@ -23,10 +23,7 @@ def home():
         password = user_password if user_password else hallticket
 
         try:
-            # login_and_fetch now returns the structured dictionary defined in the brief
             data = login_and_fetch(hallticket, password)
-            
-            # Pass data as JSON string for Chart.js and dynamic rendering
             return render_template("dashboard.html", data_json=json.dumps(data))
 
         except Exception as e:
@@ -34,6 +31,31 @@ def home():
 
     return render_template("index.html", error=None)
 
+@app.route("/api/results", methods=["POST"])
+def api_results():
+    """Fast JSON API endpoint for fetching results - ideal for mobile & headless clients"""
+    try:
+        raw_hallticket = request.json.get("hallticket", "").strip()
+        user_password = request.json.get("password", "").strip()
+        
+        if not raw_hallticket:
+            return jsonify({"error": "hallticket required"}), 400
+        
+        hallticket = transform_hallticket(raw_hallticket)
+        password = user_password if user_password else hallticket
+        
+        data = login_and_fetch(hallticket, password)
+        
+        return jsonify({
+            "success": True,
+            "data": data
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 400
+
 if __name__ == "__main__":
-    # Run in production mode (no debug overhead)
     app.run(debug=False, threaded=True)
