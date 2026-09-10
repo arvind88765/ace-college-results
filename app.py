@@ -21,9 +21,10 @@ def home():
 
         hallticket = transform_hallticket(raw_hallticket)
         password = user_password if user_password else hallticket
+        force_refresh = request.form.get("refresh") == "1"
 
         try:
-            data = login_and_fetch(hallticket, password)
+            data = login_and_fetch(hallticket, password, force_refresh=force_refresh)
             return render_template("dashboard.html", data_json=json.dumps(data))
 
         except Exception as e:
@@ -43,9 +44,10 @@ def api_results():
         
         hallticket = transform_hallticket(raw_hallticket)
         password = user_password if user_password else hallticket
-        
-        data = login_and_fetch(hallticket, password)
-        
+        force_refresh = bool(request.json.get("refresh"))
+
+        data = login_and_fetch(hallticket, password, force_refresh=force_refresh)
+
         return jsonify({
             "success": True,
             "data": data
@@ -65,9 +67,10 @@ def quick_results(hallticket):
         
         ht = transform_hallticket(hallticket)
         pwd = password if password else ht
-        
-        data = login_and_fetch(ht, pwd)
-        
+        force_refresh = request.args.get("refresh") == "1"
+
+        data = login_and_fetch(ht, pwd, force_refresh=force_refresh)
+
         # Return as JSON by default
         return jsonify({
             "success": True,

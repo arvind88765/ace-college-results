@@ -3,6 +3,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 from parser import parse_results
+from cache import get_cached_result, set_cached_result
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -72,15 +73,27 @@ def try_direct_results(s, timeout):
         pass
     return None
 
-def login_and_fetch(hallticket, password):
+def login_and_fetch(hallticket, password, force_refresh=False):
     """MAXIMUM SPEED - skip unnecessary steps, use caching where possible"""
-    s = create_session()
-    timeout = (5, 15)  # connect timeout, read timeout — generous enough for cross-region serverless calls
-
     timings = []  # list of {"step": name, "seconds": float}
 
     def mark(step_name, step_start):
         timings.append({"step": step_name, "seconds": round(time.time() - step_start, 3)})
+
+    # LAYER 0 – Redis cache: skip the entire 5-request scrape/login flow if we
+    # already have this student's results from the last few hours.
+    if not force_refresh:
+        t_cache = time.time()
+        cached = get_cached_result(hallticket)
+        if cached:
+            mark("Serve from cache", t_cache)
+            cached["timings"] = timings
+            cached["total_seconds"] = timings[0]["seconds"]
+            cached["cached"] = True
+            return cached
+
+    s = create_session()
+    timeout = (5, 15)  # connect timeout, read timeout — generous enough for cross-region serverless calls
 
     try:
         start_time = time.time()
@@ -95,8 +108,10 @@ def login_and_fetch(hallticket, password):
             mark("Parse results", t_parse)
             elapsed = time.time() - start_time
             print(f"✅ Direct fetch (cached session): {elapsed:.2f}s")
+            set_cached_result(hallticket, result)
             result["timings"] = timings
             result["total_seconds"] = round(elapsed, 3)
+            result["cached"] = False
             return result
 
         # STEP 1 – load login page
@@ -144,6 +159,7 @@ def login_and_fetch(hallticket, password):
         t5 = time.time()
         payload3 = {
             "__EVENTTARGET": "ctl00$cpHeader$ucStud$lnkOverallMarks",
+            "__EVENTARGUMENT": "",
             "__VIEWSTATE": hidden["__VIEWSTATE"],
             "__VIEWSTATEGENERATOR": hidden["__VIEWSTATEGENERATOR"],
             "__EVENTVALIDATION": hidden["__EVENTVALIDATION"],
@@ -164,8 +180,10 @@ def login_and_fetch(hallticket, password):
         elapsed = time.time() - start_time
         print(f"✅ Full auth + scrape: {elapsed:.2f}s")
 
+        set_cached_result(hallticket, result)
         result["timings"] = timings
         result["total_seconds"] = round(elapsed, 3)
+        result["cached"] = False
         return result
 
     except requests.exceptions.Timeout as e:

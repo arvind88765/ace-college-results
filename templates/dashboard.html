@@ -122,7 +122,15 @@
 <div class="container">
   <nav>
     <div class="logo">ACE Portal</div>
-    <a href="/" class="back-btn">Log out</a>
+    <div style="display:flex; gap:8px;">
+      <form id="refreshForm" method="POST" action="/" style="display:inline;">
+        <input type="hidden" name="hallticket" id="refreshHallticket" value="">
+        <input type="hidden" name="password" id="refreshPassword" value="">
+        <input type="hidden" name="refresh" value="1">
+        <button type="submit" id="refreshBtn" class="back-btn" style="background:none; cursor:pointer; font:inherit;">↻ Refresh</button>
+      </form>
+      <a href="/" class="back-btn">Log out</a>
+    </div>
   </nav>
 
   <script id="serverData" type="application/json">
@@ -136,7 +144,16 @@
 
 <script>
   const data = JSON.parse(document.getElementById('serverData').textContent);
-  
+
+  document.getElementById('refreshForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const pwd = prompt('Re-enter your password to force-refresh (leave blank if it matches your hall ticket number):', '');
+    if (pwd === null) return; // user cancelled
+    document.getElementById('refreshHallticket').value = data.student.hallticket !== 'N/A' ? data.student.hallticket : '';
+    document.getElementById('refreshPassword').value = pwd;
+    e.target.submit();
+  });
+
   const labels = data.semesters.map(s => s.name.replace('B.TECH', '').replace('SEM', '').trim());
   const sgpas = data.semesters.map(s => parseFloat(s.sgpa) || 0);
 
@@ -192,7 +209,7 @@
 
     ${data.timings ? `
     <div class="card" style="margin-bottom: 40px;">
-      <h3>Performance — Step Timings ${data.total_seconds ? `(Total: ${data.total_seconds}s)` : ''}</h3>
+      <h3>Performance — Step Timings ${data.total_seconds !== undefined ? `(Total: ${data.total_seconds}s)` : ''} ${data.cached ? '<span style="color:var(--green)">• served from cache</span>' : ''}</h3>
       <div id="perfRows"></div>
     </div>
     ` : ''}
