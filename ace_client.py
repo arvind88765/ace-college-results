@@ -20,10 +20,13 @@ def create_session():
     """Create hyper-optimized requests session with extreme pooling"""
     s = requests.Session()
     
-    # NO retries - fail instantly, don't retry slow servers
+    # One quick retry on connection blips — zero retries was causing spurious
+    # "Connection failed" errors on cross-region serverless calls to a slow host
     retry_strategy = Retry(
-        total=0,  # NO RETRIES - fail fast
-        backoff_factor=0,
+        total=1,
+        connect=1,
+        read=0,
+        backoff_factor=0.3,
         status_forcelist=[],
         allowed_methods=[]
     )
@@ -72,7 +75,7 @@ def try_direct_results(s, timeout):
 def login_and_fetch(hallticket, password):
     """MAXIMUM SPEED - skip unnecessary steps, use caching where possible"""
     s = create_session()
-    timeout = (2, 5)  # EXTREME timeout
+    timeout = (5, 15)  # connect timeout, read timeout — generous enough for cross-region serverless calls
 
     timings = []  # list of {"step": name, "seconds": float}
 
@@ -165,10 +168,10 @@ def login_and_fetch(hallticket, password):
         result["total_seconds"] = round(elapsed, 3)
         return result
 
-    except requests.exceptions.Timeout:
-        raise Exception("Timeout - server too slow")
-    except requests.exceptions.ConnectionError:
-        raise Exception("Connection failed")
+    except requests.exceptions.Timeout as e:
+        raise Exception(f"Timeout - server too slow ({e.__class__.__name__})")
+    except requests.exceptions.ConnectionError as e:
+        raise Exception(f"Connection failed - {e.__class__.__name__}: {e}")
     except Exception as e:
         raise Exception(f"Failed: {str(e)}")
 
