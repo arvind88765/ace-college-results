@@ -129,6 +129,13 @@
       .h-stat .val { font-size: 24px; }
       /* Center badge on mobile */
       .floating-credit { bottom: 16px; right: 50%; transform: translateX(50%); white-space: nowrap;}
+      /* Stack performance rows so the fixed-width label doesn't squeeze the bar */
+      .perf-row { flex-wrap: wrap; gap: 4px 12px; }
+      .perf-label { width: 100%; }
+      .perf-bar-track { order: 3; flex-basis: 100%; }
+      .perf-time { order: 2; }
+      /* Stack nav buttons if they ever wrap */
+      nav { flex-wrap: wrap; gap: 10px; }
     }
   </style>
 </head>
@@ -166,6 +173,7 @@
       <li><strong>Quick subject search.</strong> Find any subject instantly instead of scrolling through long tables.</li>
       <li><strong>Zero data stored.</strong> Nothing you enter is saved permanently on our servers.</li>
       <li><strong>Mobile friendly.</strong> Works smoothly on phones, tablets, and desktops alike.</li>
+      <li><strong>Why it can take up to 30 seconds.</strong> Most of that time is your college's own ERP server building your transcript on their end. Once we have it, we process and display it almost instantly, and repeat visits load from cache in a fraction of a second.</li>
     </ul>
   </div>
 </div>
