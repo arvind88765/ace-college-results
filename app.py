@@ -28,7 +28,7 @@ def home():
             return render_template("dashboard.html", data_json=json.dumps(data))
 
         except Exception as e:
-            return render_template("index.html", error=f"Login failed — {e}")
+            return render_template("index.html", error=f"Login failed - {e}")
 
     return render_template("index.html", error=None)
 

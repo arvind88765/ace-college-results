@@ -21,7 +21,7 @@ def create_session():
     """Create hyper-optimized requests session with extreme pooling"""
     s = requests.Session()
     
-    # One quick retry on connection blips — zero retries was causing spurious
+    # One quick retry on connection blips - zero retries was causing spurious
     # "Connection failed" errors on cross-region serverless calls to a slow host
     retry_strategy = Retry(
         total=1,
@@ -93,7 +93,7 @@ def login_and_fetch(hallticket, password, force_refresh=False):
             return cached
 
     s = create_session()
-    timeout = (5, 15)  # connect timeout, read timeout — generous enough for cross-region serverless calls
+    timeout = (5, 15)  # connect timeout, read timeout - generous enough for cross-region serverless calls
 
     try:
         start_time = time.time()

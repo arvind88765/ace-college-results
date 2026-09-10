@@ -1,13 +1,13 @@
 """
 Tiny Redis-backed result cache using the Upstash REST API.
 
-Why this approach: Vercel Python functions are stateless/serverless — nothing
+Why this approach: Vercel Python functions are stateless/serverless - nothing
 in-process survives between invocations, so an in-memory dict cache is useless
 in production. Upstash's REST API works over plain HTTPS (no redis-py, no
 compiled deps to break the build) and is what Vercel's own "KV" storage
 add-on provisions under the hood.
 
-If no store is configured, every function here is a silent no-op — the app
+If no store is configured, every function here is a silent no-op - the app
 keeps working exactly as before, just without caching. Connect a store via
 the Vercel dashboard (Storage tab -> create a KV / Upstash Redis database ->
 Connect to Project) and the required env vars are added automatically.
@@ -16,7 +16,7 @@ import os
 import json
 import requests
 
-TTL_SECONDS = 6 * 60 * 60  # 6 hours — long enough to skip re-scraping on repeat
+TTL_SECONDS = 6 * 60 * 60  # 6 hours - long enough to skip re-scraping on repeat
                             # visits same day, short enough to pick up new marks
 
 _URL = os.environ.get("UPSTASH_REDIS_REST_URL") or os.environ.get("KV_REST_API_URL")
@@ -59,7 +59,7 @@ def get_cached_result(hallticket):
 
 
 def set_cached_result(hallticket, data):
-    """Stores the parsed-results dict with a TTL. Best-effort — never raises."""
+    """Stores the parsed-results dict with a TTL. Best-effort - never raises."""
     try:
         _command("SETEX", _key(hallticket), TTL_SECONDS, json.dumps(data))
     except Exception as e:

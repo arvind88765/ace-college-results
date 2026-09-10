@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>Dashboard — ACE Portal</title>
+  <title>ACE Portal Dashboard</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet"/>
@@ -88,6 +88,21 @@
     .perf-bar-fill.slow { background: linear-gradient(90deg, #ef4444, #f59e0b); }
     .perf-time { width: 64px; flex-shrink: 0; text-align: right; font-size: 13px; font-family: 'Space Grotesk', sans-serif; }
 
+    /* About modal */
+    .about-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      display: none; align-items: center; justify-content: center; z-index: 9998; padding: 20px;
+    }
+    .about-overlay.active { display: flex; }
+    .about-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; width: 100%; max-width: 480px; max-height: 80vh; overflow-y: auto; }
+    .about-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .about-header h2 { font-family: 'Space Grotesk', sans-serif; font-size: 18px; }
+    .about-close { background: none; border: none; color: var(--sub); font-size: 24px; line-height: 1; cursor: pointer; padding: 0; }
+    .about-close:hover { color: var(--text); }
+    .about-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .about-list li { font-size: 14px; color: var(--sub); line-height: 1.5; }
+    .about-list li strong { color: var(--text); }
+
     /* FLOATING CREDIT BADGE */
     .floating-credit {
       position: fixed;
@@ -123,12 +138,7 @@
   <nav>
     <div class="logo">ACE Portal</div>
     <div style="display:flex; gap:8px;">
-      <form id="refreshForm" method="POST" action="/" style="display:inline;">
-        <input type="hidden" name="hallticket" id="refreshHallticket" value="">
-        <input type="hidden" name="password" id="refreshPassword" value="">
-        <input type="hidden" name="refresh" value="1">
-        <button type="submit" id="refreshBtn" class="back-btn" style="background:none; cursor:pointer; font:inherit;">↻ Refresh</button>
-      </form>
+      <button type="button" class="back-btn" style="background:none; cursor:pointer; font:inherit;" onclick="document.getElementById('aboutOverlay').classList.add('active')">About</button>
       <a href="/" class="back-btn">Log out</a>
     </div>
   </nav>
@@ -142,17 +152,26 @@
 
 <div class="floating-credit">Made by <span>Rvind</span></div>
 
+<div class="about-overlay" id="aboutOverlay">
+  <div class="about-card">
+    <div class="about-header">
+      <h2>About ACE Portal</h2>
+      <button type="button" class="about-close" onclick="document.getElementById('aboutOverlay').classList.remove('active')">&times;</button>
+    </div>
+    <ul class="about-list">
+      <li><strong>Instant results.</strong> Your full transcript loads in one view instead of clicking through the original portal page by page.</li>
+      <li><strong>Clean, modern UI.</strong> A dark, distraction free dashboard built for readability on any screen size.</li>
+      <li><strong>Simple to use.</strong> Enter your roll number and get your CGPA, credits, backlogs, and semester wise grades right away.</li>
+      <li><strong>Visual progress tracking.</strong> An SGPA chart shows your trend across semesters at a glance.</li>
+      <li><strong>Quick subject search.</strong> Find any subject instantly instead of scrolling through long tables.</li>
+      <li><strong>Zero data stored.</strong> Nothing you enter is saved permanently on our servers.</li>
+      <li><strong>Mobile friendly.</strong> Works smoothly on phones, tablets, and desktops alike.</li>
+    </ul>
+  </div>
+</div>
+
 <script>
   const data = JSON.parse(document.getElementById('serverData').textContent);
-
-  document.getElementById('refreshForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const pwd = prompt('Re-enter your password to force-refresh (leave blank if it matches your hall ticket number):', '');
-    if (pwd === null) return; // user cancelled
-    document.getElementById('refreshHallticket').value = data.student.hallticket !== 'N/A' ? data.student.hallticket : '';
-    document.getElementById('refreshPassword').value = pwd;
-    e.target.submit();
-  });
 
   const labels = data.semesters.map(s => s.name.replace('B.TECH', '').replace('SEM', '').trim());
   const sgpas = data.semesters.map(s => parseFloat(s.sgpa) || 0);
@@ -207,13 +226,6 @@
       </div>
     </div>
 
-    ${data.timings ? `
-    <div class="card" style="margin-bottom: 40px;">
-      <h3>Performance — Step Timings ${data.total_seconds !== undefined ? `(Total: ${data.total_seconds}s)` : ''} ${data.cached ? '<span style="color:var(--green)">• served from cache</span>' : ''}</h3>
-      <div id="perfRows"></div>
-    </div>
-    ` : ''}
-
     <div class="search-wrap">
       <input type="text" id="subjectSearch" class="search-input" placeholder="Search for a subject (e.g., Machine Learning)..." />
     </div>
@@ -250,6 +262,13 @@
         </div>
       `).join('')}
     </div>
+
+    ${data.timings ? `
+    <div class="card" style="margin-top: 24px;">
+      <h3>Performance - Step Timings ${data.total_seconds !== undefined ? `(Total: ${data.total_seconds}s)` : ''} ${data.cached ? '<span style="color:var(--green)">- served from cache</span>' : ''}</h3>
+      <div id="perfRows"></div>
+    </div>
+    ` : ''}
   `;
 
   if (data.timings && data.timings.length) {
