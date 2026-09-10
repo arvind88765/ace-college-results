@@ -80,6 +80,14 @@
     .grade.bad { background: rgba(239, 68, 68, 0.1); color: var(--red); }
     .grade.neutral { background: #1a1a1a; color: var(--text); }
 
+    /* Performance panel */
+    .perf-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .perf-label { width: 220px; flex-shrink: 0; font-size: 13px; color: var(--sub); }
+    .perf-bar-track { flex: 1; background: #1a1a1a; border-radius: 4px; height: 18px; overflow: hidden; }
+    .perf-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #10b981, #ffffff); }
+    .perf-bar-fill.slow { background: linear-gradient(90deg, #ef4444, #f59e0b); }
+    .perf-time { width: 64px; flex-shrink: 0; text-align: right; font-size: 13px; font-family: 'Space Grotesk', sans-serif; }
+
     /* FLOATING CREDIT BADGE */
     .floating-credit {
       position: fixed;
@@ -182,6 +190,13 @@
       </div>
     </div>
 
+    ${data.timings ? `
+    <div class="card" style="margin-bottom: 40px;">
+      <h3>Performance — Step Timings ${data.total_seconds ? `(Total: ${data.total_seconds}s)` : ''}</h3>
+      <div id="perfRows"></div>
+    </div>
+    ` : ''}
+
     <div class="search-wrap">
       <input type="text" id="subjectSearch" class="search-input" placeholder="Search for a subject (e.g., Machine Learning)..." />
     </div>
@@ -219,6 +234,24 @@
       `).join('')}
     </div>
   `;
+
+  if (data.timings && data.timings.length) {
+    const perfRows = document.getElementById('perfRows');
+    const maxSeconds = Math.max(...data.timings.map(t => t.seconds));
+    perfRows.innerHTML = data.timings.map(t => {
+      const pct = maxSeconds > 0 ? (t.seconds / maxSeconds) * 100 : 0;
+      const isSlow = maxSeconds > 0 && t.seconds / maxSeconds > 0.4;
+      return `
+        <div class="perf-row">
+          <div class="perf-label">${t.step}</div>
+          <div class="perf-bar-track">
+            <div class="perf-bar-fill ${isSlow ? 'slow' : ''}" style="width: ${pct}%;"></div>
+          </div>
+          <div class="perf-time">${t.seconds}s</div>
+        </div>
+      `;
+    }).join('');
+  }
 
   const ctx = document.getElementById('sgpaChart').getContext('2d');
   new Chart(ctx, {
